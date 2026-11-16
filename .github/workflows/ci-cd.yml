@@ -8,11 +8,18 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   MLFLOW_DISABLE_AGENT_HINT: "1"
+  PYTHONUTF8: "1"   # sorties et fichiers en UTF-8, y compris sous Windows
 
 jobs:
-  # 1. Qualité du code et tests : barrière commune aux Pull Requests et à main.
+  # 1. Qualité du code et tests, sous Windows ET sous Linux : barrière commune aux Pull Requests et à main.
+  #    Chaque commande est une étape séparée : sous PowerShell, un script de plusieurs lignes
+  #    ne s'arrête pas à la première commande en échec.
   qualite-et-tests:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,20 +28,23 @@ jobs:
           cache: pip
       - name: Installer les dépendances
         run: pip install -r requirements.txt
-      - name: Qualité du code (Ruff)
-        run: |
-          ruff check .
-          ruff format --check .
+      - name: Qualité du code (Ruff, erreurs et imports)
+        run: ruff check .
+      - name: Qualité du code (Ruff, formatage)
+        run: ruff format --check .
       - name: Tests unitaires et d'intégration (couverture minimale 80 %)
         run: pytest
       - name: Publier le rapport de couverture
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: couverture
+          name: couverture-${{ matrix.os }}
           path: coverage.xml
 
   # 2. Image Docker, puis déploiement dans un environnement de test et vérification du service.
+  #    Cette étape reste sous Linux : l'image de l'API est une image Linux (python:3.12-slim) et les
+  #    runners Windows hébergés par GitHub ne savent construire que des conteneurs Windows.
+  #    Sur un poste Windows, c'est Docker Desktop qui exécute ces conteneurs Linux (étape 4).
   image-et-deploiement-test:
     needs: qualite-et-tests
     runs-on: ubuntu-latest
@@ -89,19 +99,44 @@ jobs:
             ${{ steps.nom.outputs.image }}:${{ github.sha }}
             ${{ steps.nom.outputs.image }}:latest
 
-  # 4. Déploiement automatique sur la machine cible (runner auto-hébergé).
-  #    Activé en créant la variable de dépôt DEPLOIEMENT_ACTIF=true (voir le guide de mise en place).
+  # 4. Déploiement automatique sur le poste Windows (runner auto-hébergé + Docker Desktop).
+  #    À configurer dans le dépôt, Settings > Secrets and variables > Actions :
+  #      variable DEPLOIEMENT_ACTIF = true
+  #      variable DOSSIER_PROJET    = dossier du projet sur le poste, là où se trouvent
+  #                                   docker-compose.yml et .env (ex. C:\veloprevu)
+  #      secret   VELOPREVU_API_KEY = la clé d'API du fichier .env (pour le test de fumée)
   deploiement:
     if: vars.DEPLOIEMENT_ACTIF == 'true'
     needs: publication
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows]
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        shell: powershell                          # Windows PowerShell, toujours présent
+        working-directory: ${{ vars.DOSSIER_PROJET }}
+    env:
+      IMAGE_API: ${{ needs.publication.outputs.image }}:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Mettre à jour l'API avec la nouvelle image
+      - name: Vérifier que Docker Desktop est démarré
+        run: docker info --format "{{.OSType}}"
+      - name: Mettre à jour les fichiers du projet
+        run: git pull --ff-only
+      - name: Se connecter au registre GitHub
         env:
-          IMAGE_API: ${{ needs.publication.outputs.image }}:${{ github.sha }}
-        run: |
-          docker compose pull api
-          docker compose up -d --no-build api
+          JETON: ${{ secrets.GITHUB_TOKEN }}
+        run: $env:JETON | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Télécharger la nouvelle image
+        run: docker compose pull api
+      - name: Relancer l'API avec la nouvelle image
+        run: docker compose up -d --no-build api
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Installer le client HTTP du test de fumée
+        run: python -m pip install httpx
       - name: Vérifier le service déployé
+        env:
+          VELOPREVU_API_KEY: ${{ secrets.VELOPREVU_API_KEY }}
         run: python scripts/test_fumee.py http://localhost:8000

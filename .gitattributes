@@ -1,0 +1,19 @@
+# Fins de ligne identiques sur Windows, Linux et dans les conteneurs Docker.
+# Sans cela, Git sous Windows convertit en CRLF et les fichiers lus par les conteneurs
+# Linux (configurations, scripts) peuvent être mal interprétés.
+* text=auto eol=lf
+
+# Les scripts Windows gardent leurs fins de ligne Windows.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Fichiers binaires : jamais convertis.
+*.png binary
+*.jpg binary
+*.parquet binary
+*.joblib binary
+*.zip binary
+*.docx binary
+*.pptx binary
+*.pdf binary
