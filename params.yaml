@@ -1,0 +1,2 @@
+# Paramètre lu par dvc.yaml : reel (données BIXI et Open-Meteo) ou echantillon (synthétique, sans réseau)
+source: reel

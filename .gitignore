@@ -1,0 +1,27 @@
+# Secrets
+.env
+
+# Données, modèles et sorties : versionnés par DVC ou régénérés, jamais dans Git
+/data/raw/
+/data/processed/
+/data/features/
+/models/
+/logs/
+/reports/
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+.ipynb_checkpoints/
+
+# DVC
+/.dvc/cache/
+/.dvc/tmp/

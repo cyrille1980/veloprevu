@@ -1,0 +1,37 @@
+# Règles d'alerte, visibles dans Prometheus (onglet Alerts) et dans Grafana.
+groups:
+  - name: veloprevu
+    rules:
+      - alert: ApiIndisponible
+        expr: up{job="veloprevu-api"} == 0
+        for: 1m
+        labels: {severite: critique}
+        annotations:
+          resume: "L'API VéloPrévu ne répond plus"
+
+      - alert: TauxErreursEleve
+        expr: sum(rate(veloprevu_requetes_total{code=~"5.."}[5m])) / sum(rate(veloprevu_requetes_total[5m])) > 0.05
+        for: 5m
+        labels: {severite: critique}
+        annotations:
+          resume: "Plus de 5 % d'erreurs serveur depuis 5 minutes"
+
+      - alert: LatenceElevee
+        expr: histogram_quantile(0.95, sum(rate(veloprevu_latence_secondes_bucket{route="/predict"}[5m])) by (le)) > 0.5
+        for: 5m
+        labels: {severite: avertissement}
+        annotations:
+          resume: "Latence p95 de /predict supérieure à 500 ms"
+
+      - alert: DeriveDetectee
+        expr: veloprevu_derive_alerte == 1
+        labels: {severite: avertissement}
+        annotations:
+          resume: "Le dernier rapport de dérive signale une alerte (voir reports/derive/dernier.json)"
+
+      - alert: PerformanceDegradee
+        expr: veloprevu_wape_glissant > 0.5 and veloprevu_retours_total > 100
+        for: 10m
+        labels: {severite: avertissement}
+        annotations:
+          resume: "WAPE glissant supérieur à 50 % sur les derniers retours"

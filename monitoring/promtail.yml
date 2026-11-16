@@ -1,0 +1,31 @@
+# Promtail lit les journaux JSON écrits par l'application et les envoie à Loki.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: veloprevu
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: veloprevu
+          __path__: /var/log/veloprevu/veloprevu.jsonl
+    pipeline_stages:
+      - json:
+          expressions:
+            niveau: niveau
+            composant: composant
+            evenement: evenement
+            date: date
+      - labels:
+          niveau:
+          composant:
+      - timestamp:
+          source: date
+          format: RFC3339

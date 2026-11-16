@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: veloprevu
+    folder: VéloPrévu
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

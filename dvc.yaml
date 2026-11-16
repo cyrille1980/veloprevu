@@ -1,0 +1,55 @@
+# Pipeline reproductible : `dvc repro` ne relance que les étapes dont les entrées ont changé.
+# La source (reel ou echantillon) se choisit dans params.yaml.
+stages:
+  extraction:
+    cmd: python -m src.ingestion.extraction --source ${source}
+    deps:
+      - src/ingestion
+    params:
+      - source
+      - configs/config.yaml:
+          - sources
+          - periode
+    outs:
+      - data/raw
+
+  preparation:
+    cmd: python -m src.preprocessing.preparation
+    deps:
+      - src/preprocessing
+      - data/raw
+    params:
+      - configs/config.yaml:
+          - preparation
+          - periode
+    outs:
+      - data/processed
+
+  features:
+    cmd: python -m src.features.construction
+    deps:
+      - src/features
+      - data/processed
+    params:
+      - configs/config.yaml:
+          - decoupage
+    outs:
+      - data/features/features.parquet
+      - data/features/stations.json:
+          cache: false
+
+  entrainement:
+    cmd: python -m src.training.entrainement
+    deps:
+      - src/training
+      - src/evaluation
+      - data/features/features.parquet
+    params:
+      - configs/config.yaml:
+          - modeles
+    outs:
+      - models
+      - data/features/reference.parquet
+    metrics:
+      - reports/dernier_entrainement.json:
+          cache: false

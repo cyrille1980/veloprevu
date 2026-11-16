@@ -1,0 +1,74 @@
+# Configuration centrale de VéloPrévu. Aucun secret ici : les secrets vont dans .env
+projet:
+  nom: veloprevu
+  graine: 42
+
+chemins:
+  brut: data/raw
+  traite: data/processed
+  features: data/features
+  modeles: models
+  rapports: reports
+  journaux: logs
+
+sources:
+  bixi:
+    # Lien du fichier annuel (zip ou csv) copié depuis https://bixi.com/fr/donnees-ouvertes/
+    # Le lien change à chaque publication : à renseigner avant la première extraction réelle.
+    url_historique: ""
+    url_gbfs: https://gbfs.velobixi.com/gbfs/2-2/en
+    # Noms de colonnes acceptés (le schéma BIXI a changé en 2022) : le premier trouvé est utilisé.
+    colonnes:
+      debut: [STARTTIMEMS, start_date]
+      station: [STARTSTATIONNAME, emplacement_pk_start, start_station_code]
+  meteo:
+    url: https://archive-api.open-meteo.com/v1/archive
+    latitude: 45.5088
+    longitude: -73.5878
+    variables: [temperature_2m, precipitation, wind_speed_10m]
+
+periode:
+  debut: "2025-05-01"
+  fin: "2025-09-30"
+
+extraction:
+  tentatives: 3
+  delai_initial_s: 2
+  timeout_s: 120
+
+preparation:
+  nb_stations: 50
+  fuseau: America/Toronto
+  plafond_quantile: 0.999   # plafonnement des valeurs aberrantes de la demande
+
+decoupage:
+  validation_jours: 21
+  test_jours: 21
+
+modeles:
+  ridge:
+    alpha: [1.0, 10.0]
+  lightgbm:
+    - {n_estimators: 300, learning_rate: 0.05, num_leaves: 31}
+    - {n_estimators: 500, learning_rate: 0.03, num_leaves: 63}
+    - {n_estimators: 300, learning_rate: 0.05, num_leaves: 31, objective: poisson}
+  gain_minimal_vs_base: 0.05   # barrière de qualité : au moins 5 % de mieux que la base naïve
+
+mlflow:
+  uri: sqlite:///mlflow.db     # remplacé par la variable MLFLOW_TRACKING_URI si elle existe
+  experience: veloprevu
+  nom_modele: veloprevu-demande
+  alias: champion
+
+derive:
+  seuil_psi: 0.2               # PSI > 0,2 : la variable a dérivé
+  seuil_pvalue: 0.05           # test de Kolmogorov-Smirnov (information complémentaire)
+  part_variables_alerte: 0.3   # alerte si au moins 30 % des variables ont dérivé
+  degradation_max: 0.2         # alerte performance si le WAPE se dégrade de plus de 20 %
+  taille_reference: 20000
+
+agent:
+  url_llm: http://localhost:11434/v1   # Ollama local, API compatible OpenAI
+  modele: llama3.1
+  etapes_max: 6
+  url_prometheus: http://localhost:9090
