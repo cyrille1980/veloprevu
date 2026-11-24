@@ -15,7 +15,7 @@ sources:
   bixi:
     # Lien du fichier annuel (zip ou csv) copié depuis https://bixi.com/fr/donnees-ouvertes/
     # Le lien change à chaque publication : à renseigner avant la première extraction réelle.
-    url_historique: ""
+    url_historique: "https://cdn.bixi.com/wp-content/uploads/2026/02/DonneesOuvertes2025_010203040506070809101112.zip?_gl=1*1csky8z*_gcl_au*MTU0MzgyNTIyNi4xNzk0NjcxNDcw*_ga*NjA5ODAwMjIyLjE3OTQ2NzE0NzE.*_ga_5DRPF9PX4V*czE3OTUwMzcyNzMkbzIkZzEkdDE3OTUwMzc2MTUkajkkbDAkaDA."
     url_gbfs: https://gbfs.velobixi.com/gbfs/2-2/en
     # Noms de colonnes acceptés (le schéma BIXI a changé en 2022) : le premier trouvé est utilisé.
     colonnes:
@@ -28,8 +28,8 @@ sources:
     variables: [temperature_2m, precipitation, wind_speed_10m]
 
 periode:
-  debut: "2025-05-01"
-  fin: "2025-09-30"
+  debut: "2025-01-01"
+  fin: "2025-12-31"
 
 extraction:
   tentatives: 3
