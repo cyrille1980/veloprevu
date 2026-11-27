@@ -1,0 +1,99 @@
+schema: '2.0'
+stages:
+  extraction:
+    cmd: python -m src.ingestion.extraction --source reel
+    deps:
+    - path: src/ingestion
+      hash: md5
+      md5: b7e98cc30bd7946013f39a4b8595d02c.dir
+      size: 25080
+      nfiles: 6
+    params:
+      params.yaml:
+        source: reel
+      configs/config.yaml:
+        periode:
+          debut: '2025-01-01'
+          fin: '2025-02-28'
+        sources:
+          bixi:
+            url_historique: 
+              https://cdn.bixi.com/wp-content/uploads/2026/02/DonneesOuvertes2025_010203040506070809101112.zip?_gl=1*1csky8z*_gcl_au*MTU0MzgyNTIyNi4xNzk0NjcxNDcw*_ga*NjA5ODAwMjIyLjE3OTQ2NzE0NzE.*_ga_5DRPF9PX4V*czE3OTUwMzcyNzMkbzIkZzEkdDE3OTUwMzc2MTUkajkkbDAkaDA.
+            url_gbfs: https://gbfs.velobixi.com/gbfs/2-2/en
+            colonnes:
+              debut:
+              - STARTTIMEMS
+              - start_date
+              station:
+              - STARTSTATIONNAME
+              - emplacement_pk_start
+              - start_station_code
+          meteo:
+            url: https://archive-api.open-meteo.com/v1/archive
+            latitude: 45.5088
+            longitude: -73.5878
+            variables:
+            - temperature_2m
+            - precipitation
+            - wind_speed_10m
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: a141cbde73361807a52f79397942f7e5.dir
+      size: 317228321
+      nfiles: 3
+  preparation:
+    cmd: python -m src.preprocessing.preparation
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: a141cbde73361807a52f79397942f7e5.dir
+      size: 317228321
+      nfiles: 3
+    - path: src/preprocessing
+      hash: md5
+      md5: 0582e597ad4ad5fcb2df6de1dae64c92.dir
+      size: 19621
+      nfiles: 4
+    params:
+      configs/config.yaml:
+        periode:
+          debut: '2025-01-01'
+          fin: '2025-02-28'
+        preparation:
+          nb_stations: 50
+          fuseau: America/Toronto
+          plafond_quantile: 0.999
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 5784fde0d39e515d3d6daa38f9883d54.dir
+      size: 89109
+      nfiles: 1
+  features:
+    cmd: python -m src.features.construction
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: 5784fde0d39e515d3d6daa38f9883d54.dir
+      size: 89109
+      nfiles: 1
+    - path: src/features
+      hash: md5
+      md5: a8332cb43790f325edb346960687a8be.dir
+      size: 10326
+      nfiles: 4
+    params:
+      configs/config.yaml:
+        decoupage:
+          validation_jours: 21
+          test_jours: 21
+    outs:
+    - path: data/features/features.parquet
+      hash: md5
+      md5: 02d187202590f4ee7ab15328378eda87
+      size: 251164
+    - path: data/features/stations.json
+      hash: md5
+      md5: 5773680d62bbda84323e813d5d351ec8
+      size: 1882
