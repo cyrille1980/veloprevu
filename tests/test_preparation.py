@@ -14,6 +14,7 @@ def _deplacements(lignes):
 
 
 def test_nettoyer_retire_nuls_doublons_et_hors_periode(cfg):
+    cfg_test = {**cfg, "periode": {"debut": "2025-06-01", "fin": "2025-06-30"}}
     df = _deplacements(
         [
             ("2025-06-01 08:10", "A"),
@@ -24,7 +25,7 @@ def test_nettoyer_retire_nuls_doublons_et_hors_periode(cfg):
             ("2025-06-01 10:30", "B"),
         ]
     )
-    propre = prep.nettoyer(df, cfg)
+    propre = prep.nettoyer(df, cfg_test)
     assert len(propre) == 2
     assert set(propre["station"]) == {"A", "B"}
 
