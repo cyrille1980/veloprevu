@@ -160,14 +160,15 @@ def entrainer(cfg: dict, supplement: pd.DataFrame | None = None) -> dict:
     }.items():
         client.set_model_version_tag(nom_modele, version, cle, str(valeur))
 
+    chemin_reference = dossier(cfg, "features") / "reference.parquet"
     if promu:
         registre.promouvoir(cfg, version)
+    if promu or not chemin_reference.exists():
         # Jeu de référence pour la détection de dérive : ce que le modèle a vu à l'entraînement.
+        # Écrit aussi quand il manque (premier lancement sur cette machine), même sans promotion.
         reference = train_val[["station", "heure", *FEATURES, CIBLE]]
         taille = min(len(reference), cfg["derive"]["taille_reference"])
-        reference.sample(taille, random_state=cfg["projet"]["graine"]).to_parquet(
-            dossier(cfg, "features") / "reference.parquet", index=False
-        )
+        reference.sample(taille, random_state=cfg["projet"]["graine"]).to_parquet(chemin_reference, index=False)
 
     resultat = {
         "version": version,
